@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File•exchanger — Dashboard</title>
+    <!-- Подключение Tailwind CSS и шрифта Inter для премиального вида -->
+    <script src="https://tailwindcss.com"></script>
+    <link href="https://googleapis.com" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b071e;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        /* Глянцевые размытые 3D фигуры на фоне, как на фото */
+        .bg-shape-1 {
+            position: absolute; top: -10%; right: -5%; width: 550px; height: 550px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(0,0,0,0) 70%);
+            filter: blur(50px); z-index: -1;
+        }
+        .bg-shape-2 {
+            position: absolute; bottom: -5%; left: -5%; width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(147, 51, 234, 0.25) 0%, rgba(0, 0, 0, 0) 60%);
+            filter: blur(70px); z-index: -1;
+        }
+        /* Идеальное матовое стекло (Glassmorphism) на чистом CSS */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-input:focus {
+            border-color: rgba(168, 85, 247, 0.5);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        /* Кастомный скроллбар для ленты файлов */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.3); }
+    </style>
+</head>
+<body class="text-gray-200 flex items-center justify-center p-4 md:p-8">
+    
+    <!-- Задний глянцевый план -->
+    <div class="bg-shape-1"></div>
+    <div class="bg-shape-2"></div>
+
+    <!-- Основной стеклянный интерфейс приложения -->
+    <div class="w-full max-w-6xl h-[85vh] min-h-[600px] glass-panel rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl">
+        
+        <!-- ЛЕВАЯ БОКОВАЯ ПАНЕЛЬ (НАВИГАЦИЯ) -->
+        <aside class="w-full md:w-64 border-b md:border-b-0 md:border-r border-white/5 p-6 flex flex-col justify-between bg-black/10">
+            <div>
+                <!-- Название сайта красивым шрифтом -->
+                <div class="text-lg font-bold tracking-wider text-white mb-8 select-none">
+                    File<span class="text-purple-500">•</span>exchanger
+                </div>
+                
+                <!-- Кнопки вкладок -->
+                <nav class="space-y-2">
+                    <button onclick="switchTab('upload-tab')" id="btn-upload-tab" class="w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition duration-200 bg-white/5 border border-white/10 text-white shadow-sm">
+                        Выложить свой файл
+                    </button>
+                    <button onclick="switchTab('search-tab')" id="btn-search-tab" class="w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition duration-200 text-gray-400 hover:bg-white/5 hover:text-white">
+                        Поиск файлов
+                    </button>
+                </nav>
+            </div>
+            
+            <!-- Инфо о создателе внизу панели (как на картинке) -->
+            <div class="hidden md:block pt-4 border-t border-white/5 text-[11px] text-gray-500 space-y-1">
+                <p>Created by Museeffect</p>
+                <p>Clean and modern design style</p>
+            </div>
+        </aside>
+
+        <!-- ПРАВАЯ ЧАСТЬ (КОНТЕНТНЫЕ ОКНА) -->
+        <main class="flex-1 p-6 md:p-8 overflow-y-auto custom-scroll relative">
+            
+            <!-- 1. ВКЛАДКА: ВЫЛОЖИТЬ СВОЙ ФАЙЛ -->
+            <section id="upload-tab" class="space-y-6">
+                <div>
+                    <h2 class="text-xl font-semibold text-white tracking-wide">Публикация нового материала</h2>
+                    <p class="text-xs text-gray-400 mt-1">Доступно для скачивания сразу после отправки на server</p>
+                </div>
+
+                <div class="max-w-xl space-y-5">
+                    <!-- Поле Название файла -->
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-medium">Название файла</label>
+                        <input type="text" id="file-title" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition" placeholder="Введите краткое техническое название">
+                    </div>
+
+                    <!-- Поле Описание -->
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-medium">Описание</label>
+                        <textarea id="file-desc" rows="4" class="w-full glass-input rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition resize-none" placeholder="Укажите версию, особенности или инструкцию по установке..."></textarea>
+                    </div>
+
+                    <!-- Зона выбора файла (Drag and Drop интерфейс) -->
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-gray-400 mb-2 font-medium">Выбор документа</label>
+                        <div class="border border-dashed border-white/20 hover:border-purple-500/40 rounded-xl p-8 text-center cursor-pointer transition relative group bg-white/">
+                            <input type="file" id="file-input" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelection()">
+                            <p id="upload-status-text" class="text-sm text-gray-400 group-hover:text-gray-300 transition">Перетащите архив/файл сюда или нажмите для обзора</p>
+                            <p id="file-meta-info" class="text-xs text-purple-400 font-mono mt-2 hidden"></p>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка публикации -->
+                    <button onclick="publishFile()" class="bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-600 hover:to-purple-700 text-purple-100 font-medium text-sm px-6 py-3.5 rounded-xl transition shadow-lg shadow-black/40">
+                        Опубликовать файл
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2. ВКЛАДКА: ПОИСК И ТОП ФАЙЛОВ -->
+            <section id="search-tab" class="space-y-6 hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-white tracking-wide">Популярные файлы</h2>
+                        <p class="text-xs text-gray-400 mt-1">Рейтинг формируется на основе оценок пользователей</p>
+                    </div>
+                    <!-- Ссылка/Фильтр по ГЕО (Россия сверху) -->
+                    <div class="text-xs text-gray-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg w-fit">
+                        Регион приоритета: <span class="text-purple-400 font-medium">Россия</span>
+                    </div>
+                </div>
+
+                <!-- Список карточек файлов -->
+                <div id="search-results-list" class="space-y-4 max-w-3xl">
+                    <!-- Пример карточки 1 -->
+                    <div class="glass-panel p-5 rounded-2xl border border-white/5 space-y-3">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white tracking-wide">Tailwind_Glassmorphic_Boilerplate.zip</h3>
+                                <p class="text-xs text-gray-400 mt-1">Готовый шаблон структуры размытых блоков для фронтенд мастеров. Версия 2.4.</p>
+                            </div>
+                            <span class="text-xs text-gray-500 font-mono">4.2 MB</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs pt-2 border-t border-white/5 text-gray-400">
+                            <div class="flex items-center gap-4">
+                                <button class="hover:text-purple-400 transition">Нравится (124)</button>
+                                <button onclick="toggleComments(1)" class="hover:text-purple-400 transition">Комментарии (3)</button>
+                            </div>
+                            <span class="text-gray-500">Загружен: 2 часа назад</span>
+                        </div>
+                        <!-- Блок комментариев -->
+                        <div id="comments-1" class="hidden pt-3 pl-4 border-l border-purple-500/20 space-y-2 bg-black/10 p-3 rounded-xl">
+                            <p class="text-xs"><span class="text-purple-300 font-medium">User_391:</span> Идеально встал бэкдроп блур, спасибо!</p>
+                            <p class="text-xs"><span class="text-purple-300 font-medium">Code_Master:</span> Топовая скорость скачивания.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Логика работы интерфейса на чистом JavaScript -->
+    <script>
+        // Функция переключения левых вкладок
+        function switchTab(tabId) {
+            document.getElementById('upload-tab').classList.add('hidden');
+            document.getElementById('search-tab').classList.add('hidden');
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.getElementById('btn-upload-tab').className = "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition duration-200 text-gray-400 hover:bg-white/5 hover:text-white";
+            document.getElementById('btn-search-tab').className = "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition duration-200 text-gray-400 hover:bg-white/5 hover:text-white";
+
+            if(tabId === 'upload-tab') {
+                document.getElementById('btn-upload-tab').className = "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition duration-200 bg-white/5 border border-white/10 text-white shadow-sm";
+            } else {
+                document.getElementById('btn-search-tab').className = "w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition duration-200 bg-white/5 border border-white/10 text-white shadow-sm";
+            }
+        }
+
+        // Обновление состояния при выборе файла
+        function handleFileSelection() {
+            const input = document.getElementById('file-input');
+            const statusText = document.getElementById('upload-status-text');
+            const metaInfo = document.getElementById('file-meta-info');
+
+            if(input.files.length > 0) {
+                const selectedFile = input.files[0];
+                statusText.innerText = "Документ успешно подготовлен к загрузке";
+                metaInfo.innerText = `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+                metaInfo.classList.remove('hidden');
+            }
+        }
+
+        // Логика нажатия на "Опубликовать"
+        function publishFile() {
+            const title = document.getElementById('file-title').value;
+            const desc = document.getElementById('file-desc').value;
+            const input = document.getElementById('file-input');
+
+            if(!title || !input.files.length) {
+                alert("Заполните название и выберите файл на вашем устройстве.");
+                return;
+            }
+
+            alert("Файл успешно обработан системой! Перейдите во вкладку 'Поиск файлов' для проверки обновления базы.");
+
+            // Сброс формы
+            document.getElementById('file-title').value = "";
+            document.getElementById('file-desc').value = "";
+            input.value = "";
+            document.getElementById('file-meta-info').classList.add('hidden');
+            document.getElementById('upload-status-text').innerText = "Перетащите архив/файл сюда или нажмите для обзора";
+        }
+
+        // Функция открытия/закрытия блока комментариев
+        function toggleComments(id) {
+            const block = document.getElementById(`comments-${id}`);
+            block.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
